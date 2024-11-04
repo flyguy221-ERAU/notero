@@ -1,5 +1,6 @@
 import { NOTION_TAG_NAME } from '../constants';
 import { PageTitleFormat } from '../prefs/notero-pref';
+import { propertyMappings } from '../prefs/propertyMapping';
 import {
   buildCollectionFullName,
   getItemURL,
@@ -73,27 +74,30 @@ class PropertyBuilder {
   }
 
   public async buildProperties(): Promise<DatabaseRequestProperties> {
-    const properties: DatabaseRequestProperties = {
-      title: {
-        title: buildRichText(await this.getPageTitle()),
-      },
-    };
+  const properties: DatabaseRequestProperties = {
+    title: {
+      title: buildRichText(await this.getPageTitle()),
+    },
+  };
 
-    const validPropertyDefinitions = this.propertyDefinitions.filter(
-      this.databaseHasProperty,
-    );
+  const validPropertyDefinitions = this.propertyDefinitions
+    .map((def) => ({
+      ...def,
+      name: formatPropertyName(def.name),
+    }))
+    .filter(this.databaseHasProperty);
 
-    for (const { name, type, buildRequest } of validPropertyDefinitions) {
-      const request = await buildRequest();
+  for (const { name, type, buildRequest } of validPropertyDefinitions) {
+    const request = await buildRequest();
 
-      properties[name] = {
-        type,
-        [type]: request,
-      } as DatabaseRequestProperty;
-    }
-
-    return properties;
+    properties[name] = {
+      type,
+      [type]: request,
+    } as DatabaseRequestProperty;
   }
+
+  return properties;
+}
 
   private databaseHasProperty = ({ name, type }: PropertyDefinition) =>
     this.databaseProperties[name]?.type === type;
